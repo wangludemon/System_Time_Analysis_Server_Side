@@ -1,47 +1,195 @@
-# 混合关键系统模拟工具简介
+# iSure 时延分析后端使用说明
 
-模拟工具能够帮助用户全面评估不同条件下资源共享协议的性能表现、对比不同资源共享协议的优缺点、验证资源共享协议的正确性。这款工具提供以下三个功能：
+## 1. 环境要求
 
-- 以可视化形式展示任务全周期运行情况，即在甘特图上使用不同的颜色和符号来表示任务的状态（独立执行、等待资源、访问资源等）。这个功能有助于用户更好地理解指定资源共享协议运行规则，便捷对比不同资源共享协议的优缺点、深入了解系统任务之间的相互影响关系、及时发现系统潜在问题，如死锁和饥饿。
-- 模拟指定任务最坏运行情况，即模拟任务的极端执行情况。通过模拟任务的极端执行情况，用户可以深入了解任务在最不利情况下的运行状况，有助于验证系统任务的响应时间，定位系统可调度性瓶颈并为资源共享协议调优提供关键信息。
-- 调整系统运行参数。这项功能使用户能够模拟各种工作负载和资源配置，从而全面评估不同条件下资源共享协议的性能表现。
+请先安装：
 
+```text
+Java 8 或更高版本
+Maven 3.x
+Python 3
+Ubuntu / WSL2
+```
 
+检查：
 
-# 后端实现技术栈
+```bash
+java -version
+mvn -version
+python3 --version
+```
 
-混合关键系统模拟工具选用前后端分离的开发模式进行构建。本仓库存储后端代码。混合关键系统模拟工具采用`Spring Boot`和`Java`来构建后端服务。
+## 2. 下载后端
 
+```bash
+git clone -b feature/llvmta-integration \
+  https://github.com/wangludemon/System_Time_Analysis_Server_Side.git \
+  iSure-Server
 
+cd iSure-Server
+```
 
-# 后端代码文件夹说明
+## 3. 安装 LLVMTA
 
-在`Mixed-Criticality-System-Simulator-Client-Side`文件夹中，`src/main/java/com/example/serveside`存放后端服务代码，其他内容为IDEA项目自带文件。`src/main/java/com/example/serveside`文件夹的内容具体如下：
+LLVMTA 官方仓库：
 
-- `controller/ProtocolController.java`：`Spring Boot`中的控制器类，负责响应前端发起的请求并返回处理结果。
-- `request/ConfigurationInformation.java`：前端向后端传递的混合关键系统模拟工具系统环境配置参数。
-- `response`：后端向前端传递的一系列响应信息，包括任务信息、资源信息、任务运行情况等等。
-- `service`：后端真正处理前端请求的代码，包括模拟任务的执行、查看任务的最坏运行情况等功能的实现。
+```text
+https://github.com/RTS-SYSU/Timing-Analysis-Multicores
+```
 
+请按照 LLVMTA 官方文档完成安装和编译。
 
+推荐目录：
 
-# 后端代码编写环境
+```text
+/home/当前用户/llvmta
+```
 
-混合关键系统模拟工具的后端服务使用`Spring Boot`框架和`Java`语言，对应的版本如下：
+安装完成后至少应存在：
 
-- `Java`：1.8.0\_381
-- `Spring Boot`：2.7.6
+```text
+~/llvmta/build/bin/llvmta
+~/llvmta/testcases/run.py
+```
 
+**当前开发版本默认调用：**
 
+```text
+~/llvmta/testcases/runf.py
+```
 
-# 后端代码运行指南
+如果你使用官方 `run.py`，启动前执行（重要！）：
 
-后端代码的运行指南如下：
+```bash
+export LLVMTA_SCRIPT=run.py
+```
 
-- 从本仓库下载代码至本地。
-- 使用`IDEA`打开`Mixed-Criticality-System-Simulator-Serve-Side`文件夹。
-- `IDEA`会自动根据`pom.xml`文件下载项目所需的依赖项。
-- 运行后端代码。
+如果 LLVMTA 不在 `~/llvmta`，例如位于 `/opt/isure/llvmta`，启动前执行：
 
+```bash
+export LLVMTA_HOME=/opt/isure/llvmta
+```
 
-  
+## 4. 配置说明
+
+配置文件：
+
+```text
+src/main/resources/application.properties
+```
+
+默认配置：
+
+```properties
+server.port=8080
+llvmta.home=${LLVMTA_HOME:}
+llvmta.script=${LLVMTA_SCRIPT:runf.py}
+llvmta.python=${LLVMTA_PYTHON:python3}
+```
+
+常用配置示例：
+
+```bash
+export LLVMTA_HOME=/home/user/llvmta
+export LLVMTA_SCRIPT=run.py
+export LLVMTA_PYTHON=python3
+```
+
+## 5. 编译并启动
+
+```bash
+cd ~/iSure-Server
+mvn clean compile -DskipTests
+mvn spring-boot:run
+```
+
+启动成功后应看到：
+
+```text
+Tomcat started on port(s): 8080
+Started ServeSideApplication
+```
+
+## 6. 检查服务
+
+```bash
+curl http://127.0.0.1:8080/api/rta/health
+```
+
+正常结果中应包含：
+
+```json
+{
+  "status": "UP",
+  "llvmtaAvailable": true
+}
+```
+
+## 7. 准备 testcase
+
+testcase 目录至少应包含：
+
+```text
+CoreInfo.json
+LoopAnnotations.csv
+LLoopAnnotations.csv
+C 源代码
+```
+
+本仓库下的示例目录：
+
+```text
+examples/llvmta-testcase/test
+```
+
+核心数量由 `CoreInfo.json` 自动读取，前端不需要输入核心数量。
+
+## 8. 运行 LLVMTA 并导入 WCET
+
+```bash
+curl -X POST http://127.0.0.1:8080/api/rta/llvmta/import -H "Content-Type: application/json" -d '{"testcasePath":"/home/user/iSure-Server/examples/llvmta-testcase/test","frequencyGHz":1.6}'
+```
+
+参数说明：
+
+```text
+testcasePath：testcase 的 Linux 路径
+frequencyGHz：处理器频率，单位 GHz
+```
+
+后端会：
+
+```text
+运行 LLVMTA
+→ 读取 output/WCET.json
+→ 将 cycles 转换为微秒
+→ 保存为当前任务系统
+```
+
+## 9. Windows Qt 连接 WSL 后端
+
+在 Windows PowerShell 中查询 WSL IP：
+
+```powershell
+wsl -d Ubuntu-22.04 hostname -I
+```
+
+例如：
+
+```text
+172.20.179.46
+```
+
+Qt 前端填写：
+
+```text
+IP：172.20.179.46
+```
+
+Windows 测试：
+
+```powershell
+curl.exe http://172.20.179.46:8080/api/rta/health
+```
+
+注意：WSL IP 在重启后可能变化。
